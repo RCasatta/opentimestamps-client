@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+# Copyright (C) 2016 The OpenTimestamps developers
+#
+# This file is part of the OpenTimestamps Client.
+#
+# It is subject to the license terms in the LICENSE file found in the top-level
+# directory of this distribution.
+#
+# No part of the OpenTimestamps Client, including this file, may be copied,
+# modified, propagated, or distributed except according to the terms contained
+# in the LICENSE file.
+
+import base64
+import subprocess
+import argparse
+import logging
+
+import binascii
+
+import otsclient.args
+import hashlib
+import sys
+sys.path.insert(1, sys.path[0] + '/python-opentimestamps/')
+
+from otsclient.cmds import upgrade_timestamp, verify_timestamp
+from opentimestamps.core.op import OpSHA256
+
+from opentimestamps.core.serialize import BytesDeserializationContext
+from opentimestamps.core.timestamp import DetachedTimestampFile
+
+
+logging.basicConfig(format='ots: %(message)s')
+logging.root.setLevel(logging.INFO)
+
+parser = otsclient.args.make_common_options_arg_parser()
+parser.add_argument("-g", "--gpg-program", action="store", default="/usr/bin/gpg",
+                    help="Path to the GnuPG binary (default %(default)s)")
+parser.add_argument('files', metavar='file', type=argparse.FileType('rb'),
+                    nargs='+',
+                    help='Filename')
+parser.add_argument('-c', '--calendar', metavar='URL', dest='calendar_urls', action='append', type=str,
+                    default=["https://a.pool.opentimestamps.org", "https://b.pool.opentimestamps.org"],
+                    help='Create timestamp with the aid of a remote calendar. May be specified multiple times. Default: %(default)r')
+parser.add_argument('-b', '--btc-wallet', dest='use_btc_wallet', action='store_true',
+                    help='Create timestamp locally with the local Bitcoin wallet.')
+parser.add_argument("-m", type=int, default="2",
+                    help="Commitments are sent to remote calendars,"
+                         "in the event of timeout the timestamp is considered "
+                         "done if at least M calendars replied. "
+                         "Default: %(default)s")
+parser.add_argument("--timeout", type=int, default=5,
+                    help="Timeout before giving up on a calendar. "
+                         "Default: %(default)d")
+args = parser.parse_args(sys.argv[1:])
+args = otsclient.args.handle_common_options(args, parser)
+
+
+
+logging.info("parsing " + str(args.files))
+
+ASCII_ARMOR_HEADER = b'-----BEGIN OPENTIMESTAMPS PROOF-----\n\n'
+ASCII_ARMOR_FOOTER = b'-----END OPENTIMESTAMPS PROOF-----\n'
+
+ASCII_PGP_ARMOR_MSG_BEGIN = b'-----BEGIN PGP SIGNED MESSAGE-----\n'
+ASCII_PGP_ARMOR_SIG_BEGIN = b'-----BEGIN PGP SIGNATURE-----\n'
+
+
+def get_msg_hash(stamped_and_signed_msg):
+    msg_start = stamped_and_signed_msg.find(ASCII_PGP_ARMOR_MSG_BEGIN)
+    pgp_start = stamped_and_signed_msg.find(b'\n' + ASCII_PGP_ARMOR_SIG_BEGIN)
+
+    if msg_start == -1 or pgp_start == -1:
+        return None
+
+    msg_start = stamped_and_signed_msg[len(ASCII_PGP_ARMOR_MSG_BEGIN):].find(b'\n\n')
+    msg = stamped_and_signed_msg[len(ASCII_PGP_ARMOR_MSG_BEGIN)+msg_start+2:pgp_start+1]
+
+    msg_hash = hashlib.new('sha256', msg).digest()
+    logging.info("msg hash " + str(binascii.hexlify(msg_hash)))
+
+    return OpSHA256()(msg)
+
+
+def deserialize_ascii_armored_timestamp(stamped_and_signed_msg, msg_hash, args):
+    stamp_start = stamped_and_signed_msg.find(ASCII_ARMOR_HEADER)
+    stamp_end = stamped_and_signed_msg.find(b'\n' + ASCII_ARMOR_FOOTER)
+    if stamp_start == -1 or stamp_end == -1:
+        return None, None, None
+
+    base64_encoded_stamp = stamped_and_signed_msg[stamp_start + len(ASCII_ARMOR_HEADER):stamp_end]
+
+    try:
+        serialized_stamp = base64.standard_b64decode(base64_encoded_stamp)
+
+        major_version = serialized_stamp[0]
+        minor_version = serialized_stamp[1]
+
+        if major_version != 1:
+            logging.error("Can't verify timestamp; major version %d not known" % major_version)
+            sys.exit(1)
+
+        logging.debug("Git timestamp is version %d.%d" % (major_version, minor_version))
+
+        ctx = BytesDeserializationContext(serialized_stamp[2:])
+        # timestamp = Timestamp.deserialize(ctx, msg_hash)
+        detached_timestamp = DetachedTimestampFile.deserialize(ctx)
+        # actual_file_digest = detached_timestamp.file_hash_op.hash_fd(args.target_fd)
+        # logging.debug("Got digest %s" % b2x(actual_file_digest))
+
+        upgrade_timestamp(detached_timestamp.timestamp, args)
+        verified = verify_timestamp(detached_timestamp.timestamp, args)
+
+        logging.debug("timestamp verified? " + str(verified))
+
+        return major_version, minor_version, detached_timestamp.timestamp
+    except Exception as err:
+        logging.error("Bad timestamp: %r" % err)
+        return None, None, None
+
+
+for file in args.files:
+    msg_filename = file.name
+
+    fd_asc = open(msg_filename, "rb")
+    stamped_and_signed_msg = fd_asc.read()
+
+    msg_hash = get_msg_hash(stamped_and_signed_msg)
+    (major_version, minor_version, timestamp) = deserialize_ascii_armored_timestamp(stamped_and_signed_msg, msg_hash, args)
+    if timestamp is None:
+        print("OpenTimestamps: No timestamp found", file=sys.stderr)
+    else:
+        good = otsclient.cmds.verify_timestamp(timestamp, args)
+
+        if good:
+            logging.info("Good timestamp")
+        else:
+            logging.warning("Could not verify timestamp!")
+    sys.stderr.flush()
+
+    subprocess.run("`which gpg` --verify " + msg_filename, shell=True)  # FIXME use `which gpg`
+
+
+# vim:syntax=python filetype=python

@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+# Copyright (C) 2016 The OpenTimestamps developers
+#
+# This file is part of the OpenTimestamps Client.
+#
+# It is subject to the license terms in the LICENSE file found in the top-level
+# directory of this distribution.
+#
+# No part of the OpenTimestamps Client, including this file, may be copied,
+# modified, propagated, or distributed except according to the terms contained
+# in the LICENSE file.
+
+import sys
+sys.path.insert(1, sys.path[0] + '/python-opentimestamps/')
+import base64
+import subprocess
+import argparse
+import logging
+import otsclient.args
+from opentimestamps.core.serialize import StreamDeserializationContext, BytesSerializationContext, \
+    BadMagicError, DeserializationError
+from opentimestamps.core.timestamp import DetachedTimestampFile
+
+
+logging.basicConfig(format='ots: %(message)s')
+logging.root.setLevel(logging.INFO)
+
+parser = otsclient.args.make_common_options_arg_parser()
+parser.add_argument('files', metavar='file', type=argparse.FileType('rb'),
+                    nargs='+',
+                    help='Filename')
+parser.add_argument('-c', '--calendar', metavar='URL', dest='calendar_urls', action='append', type=str,
+                    default=["https://a.pool.opentimestamps.org", "https://b.pool.opentimestamps.org"],
+                    help='Create timestamp with the aid of a remote calendar. May be specified multiple times. Default: %(default)r')
+parser.add_argument('-b', '--btc-wallet', dest='use_btc_wallet', action='store_true',
+                    help='Create timestamp locally with the local Bitcoin wallet.')
+parser.add_argument("-m", type=int, default="2",
+                    help="Commitments are sent to remote calendars,"
+                         "in the event of timeout the timestamp is considered "
+                         "done if at least M calendars replied. "
+                         "Default: %(default)s")
+parser.add_argument("--timeout", type=int, default=5,
+                    help="Timeout before giving up on a calendar. "
+                         "Default: %(default)d")
+
+
+args = parser.parse_args(sys.argv[1:])
+logging.basicConfig(format='ots: %(message)s')
+logging.info("parsing " + str(args.files))
+
+otsclient.cmds.stamp_command(args)
+
+ASCII_ARMOR_HEADER = b'-----BEGIN OPENTIMESTAMPS PROOF-----\n\n'
+ASCII_ARMOR_FOOTER = b'-----END OPENTIMESTAMPS PROOF-----\n'
+
+
+def write_ascii_armored(timestamp, fd, minor_version):
+    ctx = BytesSerializationContext()
+    timestamp.serialize(ctx)
+    serialized_timestamp = ctx.getbytes()
+
+    fd.write(ASCII_ARMOR_HEADER)
+
+    header = (b'\x01' + # major
+              bytes([minor_version]))
+    b64_encoded = base64.standard_b64encode(header + serialized_timestamp)
+    for chunk in (b64_encoded[i:i+64] for i in range(0, len(b64_encoded), 64)):
+        fd.write(chunk)
+        fd.write(b'\n')
+
+    fd.write(ASCII_ARMOR_FOOTER)
+
+for file in args.files:
+    msg_filename = file.name
+    subprocess.run("`which gpg` --clearsign " + msg_filename, shell=True)
+
+    fd_asc = open(msg_filename + ".asc", "ab")
+    fd_ots = open(msg_filename + ".ots", "rb")
+
+    ctx = StreamDeserializationContext(fd_ots)
+    try:
+        detached_timestamp = DetachedTimestampFile.deserialize(ctx)
+        minor_version = 1
+        write_ascii_armored(detached_timestamp, fd_asc, minor_version)
+
+    # IOError's are already handled by argparse
+    except BadMagicError:
+        logging.error("Error! %r is not a timestamp file" % fd_ots.name)
+        sys.exit(1)
+    except DeserializationError as exp:
+        logging.error("Invalid timestamp file %r: %s" % (fd_ots.name, exp))
+        sys.exit(1)
+
+
+# vim:syntax=python filetype=python
