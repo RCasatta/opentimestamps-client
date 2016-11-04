@@ -23,7 +23,6 @@ import sys
 sys.path.insert(1, sys.path[0] + '/python-opentimestamps/')
 
 from otsclient.cmds import upgrade_timestamp, verify_timestamp
-from opentimestamps.core.op import OpSHA256
 
 from opentimestamps.core.serialize import BytesDeserializationContext
 from opentimestamps.core.timestamp import DetachedTimestampFile
@@ -55,9 +54,6 @@ args = parser.parse_args(sys.argv[1:])
 args = otsclient.args.handle_common_options(args, parser)
 
 
-
-logging.info("parsing " + str(args.files))
-
 ASCII_ARMOR_HEADER = b'-----BEGIN OPENTIMESTAMPS PROOF-----\n\n'
 ASCII_ARMOR_FOOTER = b'-----END OPENTIMESTAMPS PROOF-----\n'
 
@@ -78,7 +74,7 @@ def get_msg_hash(stamped_and_signed_msg):
     msg_hash = hashlib.new('sha256', msg).digest()
     logging.info("msg hash " + str(binascii.hexlify(msg_hash)))
 
-    return OpSHA256()(msg)
+    return msg_hash
 
 
 def deserialize_ascii_armored_timestamp(stamped_and_signed_msg, msg_hash, args):
@@ -110,6 +106,15 @@ def deserialize_ascii_armored_timestamp(stamped_and_signed_msg, msg_hash, args):
         upgrade_timestamp(detached_timestamp.timestamp, args)
         verified = verify_timestamp(detached_timestamp.timestamp, args)
 
+        msg_hash_string = str(binascii.hexlify(msg_hash))
+        if detached_timestamp.file_digest == msg_hash:
+            logging.info("Message digest and timestamp digest are equal to " + msg_hash_string)
+        else:
+            logging.error("Message digest and timestamp digest are not equal")
+            logging.error("ots: " + str(binascii.hexlify(detached_timestamp.file_digest)))
+            logging.error("msg: " + msg_hash_string)
+            sys.exit(1)
+
         logging.debug("timestamp verified? " + str(verified))
 
         return major_version, minor_version, detached_timestamp.timestamp
@@ -120,6 +125,7 @@ def deserialize_ascii_armored_timestamp(stamped_and_signed_msg, msg_hash, args):
 
 for file in args.files:
     msg_filename = file.name
+    logging.info("Verifying " + msg_filename)
 
     fd_asc = open(msg_filename, "rb")
     stamped_and_signed_msg = fd_asc.read()

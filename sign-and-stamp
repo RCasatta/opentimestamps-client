@@ -43,10 +43,19 @@ parser.add_argument("--timeout", type=int, default=5,
                     help="Timeout before giving up on a calendar. "
                          "Default: %(default)d")
 
-
 args = parser.parse_args(sys.argv[1:])
 logging.basicConfig(format='ots: %(message)s')
-logging.info("parsing " + str(args.files))
+
+
+def verify_carriage_return_end(fd):  # FIXME useless???
+    data = fd.read()
+    if not data[len(data)-1] == 10:
+        logging.error("Text files must end with a carriage return...")  # FIXME better message
+        sys.exit(1)
+    fd.seek(0)
+
+for file in args.files:
+    verify_carriage_return_end(file)
 
 otsclient.cmds.stamp_command(args)
 
@@ -72,6 +81,7 @@ def write_ascii_armored(timestamp, fd, minor_version):
 
 for file in args.files:
     msg_filename = file.name
+    logging.info("Signing and stamping " + str(msg_filename))
     subprocess.run("`which gpg` --clearsign " + msg_filename, shell=True)
 
     fd_asc = open(msg_filename + ".asc", "ab")
