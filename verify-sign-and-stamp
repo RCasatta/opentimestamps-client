@@ -72,7 +72,7 @@ def get_msg_hash(stamped_and_signed_msg):
     msg = stamped_and_signed_msg[len(ASCII_PGP_ARMOR_MSG_BEGIN)+msg_start+2:pgp_start+1]
 
     msg_hash = hashlib.new('sha256', msg).digest()
-    logging.info("msg hash " + str(binascii.hexlify(msg_hash)))
+    logging.debug("msg hash " + str(binascii.hexlify(msg_hash)))
 
     return msg_hash
 
@@ -104,7 +104,6 @@ def deserialize_ascii_armored_timestamp(stamped_and_signed_msg, msg_hash, args):
         # logging.debug("Got digest %s" % b2x(actual_file_digest))
 
         upgrade_timestamp(detached_timestamp.timestamp, args)
-        verified = verify_timestamp(detached_timestamp.timestamp, args)
 
         msg_hash_string = str(binascii.hexlify(msg_hash))
         if detached_timestamp.file_digest == msg_hash:
@@ -114,8 +113,6 @@ def deserialize_ascii_armored_timestamp(stamped_and_signed_msg, msg_hash, args):
             logging.error("ots: " + str(binascii.hexlify(detached_timestamp.file_digest)))
             logging.error("msg: " + msg_hash_string)
             sys.exit(1)
-
-        logging.debug("timestamp verified? " + str(verified))
 
         return major_version, minor_version, detached_timestamp.timestamp
     except Exception as err:

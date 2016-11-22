@@ -1,0 +1,8 @@
+Hello World!
+
+This message is both signed with pgp and timestamped with OpenTimestamps.
+Even if my key will be compromised, the attacker cannot forge this message backward.
+
+Have a nice day.
+
+Riccardo Casatta

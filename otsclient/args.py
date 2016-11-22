@@ -16,6 +16,7 @@ import os
 import sys
 import socket
 
+sys.path.insert(1, sys.path[0] + '/python-opentimestamps/')
 import opentimestamps.calendar
 
 import otsclient
