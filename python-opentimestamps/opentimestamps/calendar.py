@@ -12,6 +12,7 @@
 import binascii
 import urllib.request
 import fnmatch
+import ssl
 
 from opentimestamps.core.timestamp import Timestamp
 from opentimestamps.core.serialize import BytesDeserializationContext
@@ -54,13 +55,17 @@ class RemoteCalendar:
         self.request_headers = {"Accept": "application/vnd.opentimestamps.v1",
                                 "User-Agent": user_agent}
 
+        self.ctx = ssl.create_default_context()
+        self.ctx.load_verify_locations('./cert/DST_Root_CA_X3.pem')
+
     def submit(self, digest, timeout=None):
         """Submit a digest to the calendar
 
         Returns a Timestamp committing to that digest
         """
+
         req = urllib.request.Request(self.url + '/digest', data=digest, headers=self.request_headers)
-        with urllib.request.urlopen(req, timeout) as resp:
+        with urllib.request.urlopen(req, timeout=timeout, context=self.ctx) as resp:
             if resp.status != 200:
                 raise Exception("Unknown response from calendar: %d" % resp.status)
 
@@ -78,10 +83,11 @@ class RemoteCalendar:
 
         Raises KeyError if the calendar doesn't have that commitment
         """
+
         req = urllib.request.Request(self.url + '/timestamp/' + binascii.hexlify(commitment).decode('utf8'),
                                      headers=self.request_headers)
         try:
-            with urllib.request.urlopen(req, timeout) as resp:
+            with urllib.request.urlopen(req, timeout=timeout, context=self.ctx) as resp:
                 if resp.status == 200:
 
                     # FIXME: Not a particularly nice way of handling this, but it'll do
