@@ -192,21 +192,31 @@ class Timestamp:
         for op_stamp in self.ops.values():
             yield from op_stamp.all_attestations()
 
-    def str_tree(self, indent=0):
+    def str_tree(self, indent=0, debug=20):
         """Convert to tree (for debugging)"""
+
+        def debug_str(r, debug):
+            if debug < 20:
+                r += " (" + str(binascii.hexlify(self.msg).decode()) + ")" + " [" + str(
+                    binascii.hexlify(self.msg[::-1]).decode()) + "]"
+            r += "\n"
+            return r
 
         r = ""
         if len(self.attestations) > 0:
             for attestation in sorted(self.attestations):
-                r += " "*indent + "verify %s" % str(attestation) + "\n"
+                r += " "*indent + "verify %s" % str(attestation)
+                r = debug_str(r, debug)
 
         if len(self.ops) > 1:
             for op, timestamp in sorted(self.ops.items()):
-                r += " "*indent + " -> " + "%s"%str(op) + "\n"
-                r += timestamp.str_tree(indent+4)
+                r += " "*indent + " -> " + "%s" % str(op)
+                r = debug_str(r, debug)
+                r += timestamp.str_tree(indent+4, debug=debug)
         elif len(self.ops) > 0:
-            r += " "*indent + "%s\n" % str(tuple(self.ops.keys())[0])
-            r += tuple(self.ops.values())[0].str_tree(indent)
+            r += " "*indent + "%s" % str(tuple(self.ops.keys())[0])
+            r = debug_str(r, debug)
+            r += tuple(self.ops.values())[0].str_tree(indent, debug=debug)
 
         return r
 
