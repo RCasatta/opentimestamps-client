@@ -1,0 +1,48 @@
+File sha256 hash: 2528a5db6dc20689568e452cbe094307521564b00109f371ad860e67b254bd92
+Timestamp:
+append 6314c8ac1771b4ee870d35624bc59e65
+sha256
+ -> append 86fd9f578608229c964469968b22e434
+    sha256
+    prepend 583be6a4
+    append 1abfef6f22434a43
+    verify PendingAttestation('https://ots.eternitywall.it')
+    sha256
+    prepend 0100000001e250d8f34eb3609c6e63db829dfb2fd37581748f21d8b875f1f58ee624c1f8130000000049483045022100f9421ad1218359754e4fff202442a72a9c3eac9f343d4740fe894f081afc3047022017b708261c8418da8e89d95e57b206e1cf50b7c9e967420d282c387a9cc9765701fdffffff02e8ac020000000000232102e367f49e97cbcc5c78be30ab6a6afac7e719ba221f562ef267b278c8a6c5d35eac0000000000000000226a20
+    append 6aba0600
+    sha256
+    sha256
+    append a7be120b3c5cdd3b5aa6f65f225d7887bbe303d0a30c55e12a9948be75485239
+    sha256
+    sha256
+    prepend 6fd69b21b8418bc26536dfe0e3343f7b42dbccb9f9d6a1b13c8adcb2ce364d04
+    sha256
+    sha256
+    append 68e1946f00f1da5112dca5dec30a8a6246ae3066d67395d358ecc5501e3328fa
+    sha256
+    sha256
+    prepend 89627a2b78fd130b982652154431adc70ccf0d103e0757c84156b242572a3025
+    sha256
+    sha256
+    prepend 6981eaa01f4a0525f3181cca9efd17cfee5cb62e96b51b9474ae582633c73dc9
+    sha256
+    sha256
+    append c396d6c587f82f9e8436d2a23f56f89c1cbbc66924b8e9f55cb97af2445efe25
+    sha256
+    sha256
+    prepend de075b8ce31a2274b06034a6b2d70c6554952cee09c182fe0dd5320eb83817ab
+    sha256
+    sha256
+    prepend bba5551947008ae70dd30390b459ae68d96d6ae104031d20f90ead574d38913b
+    sha256
+    sha256
+    append 22109dd0d00c54ef34201aa2fc7fa8b2aac23af0b7e1269a3a2819608b9888f4
+    sha256
+    sha256
+    verify BitcoinBlockHeaderAttestation(440939)
+ -> append c1731a9864f8263bde20a668365fe6fa
+    sha256
+    prepend 583be6a5
+    append c38960a6989d2463
+    verify PendingAttestation('https://bob.btc.calendar.opentimestamps.org')
+
