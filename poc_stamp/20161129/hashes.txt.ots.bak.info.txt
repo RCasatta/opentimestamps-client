@@ -1,0 +1,20 @@
+File sha256 hash: 82cdab347e1dcd80723317565980d817953fa0bc5b81c96bcc14ef2ae68cf1b8
+Timestamp:
+append 612dc316a9d309a5ac2e2a99109306f7
+sha256
+ -> append 2a3fe378c09a69f62b22337fc6ddd18f
+    sha256
+    prepend 583d4951
+    append 6d5bb003fd85e4b0
+    verify PendingAttestation('https://ots.eternitywall.it')
+ -> append 66026f6126969d30c5eca1ee63dd1bd5
+    sha256
+    prepend 583d4953
+    append 43e52e5e85265852
+    verify PendingAttestation('https://alice.btc.calendar.opentimestamps.org')
+ -> append f5a2665cff9a8c94fb23732cb529ad5b
+    sha256
+    prepend 583d4953
+    append 18d46dddab54d755
+    verify PendingAttestation('https://bob.btc.calendar.opentimestamps.org')
+
