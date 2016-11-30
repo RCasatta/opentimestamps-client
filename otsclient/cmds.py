@@ -211,13 +211,15 @@ def stamp_command(args):
 
 def is_timestamp_complete(stamp, args):
     """Determine if timestamp is complete and can be verified"""
+    counter = {}
     for msg, attestation in stamp.all_attestations():
-        if attestation.__class__ == BitcoinBlockHeaderAttestation:
-            # FIXME: we should actually check this attestation, rather than
-            # assuming it's valid
-            return True
-    else:
-        return False
+        try:
+            counter[attestation.__class__] += 1
+        except KeyError:
+            counter[attestation.__class__] = 1
+
+    return counter[PendingAttestation] == counter[BitcoinBlockHeaderAttestation]
+
 
 def upgrade_timestamp(timestamp, args):
     """Attempt to upgrade an incomplete timestamp to make it verifiable
@@ -239,11 +241,10 @@ def upgrade_timestamp(timestamp, args):
     def get_attestations(stamp):
         return set(attest for msg, attest in stamp.all_attestations())
 
-
     changed = False
 
     # First, check the cache for upgrades to this timestamp. Since the cache is
-    # local, we do this very agressively, checking every single sub-timestamp
+    # local, we do this very aggressively, checking every single sub-timestamp
     # against the cache.
     def walk_stamp(stamp):
         yield stamp
@@ -270,7 +271,7 @@ def upgrade_timestamp(timestamp, args):
         # Check remote calendars for upgrades.
         #
         # This time we only check PendingAttestations - we can't be as
-        # agressive.
+        # aggressive.
         found_new_attestations = False
         for sub_stamp in directly_verified(timestamp):
             for attestation in sub_stamp.attestations:
@@ -308,18 +309,19 @@ def upgrade_timestamp(timestamp, args):
                         atts_from_remote = get_attestations(upgraded_stamp)
                         if atts_from_remote:
                             logging.info("Got %d attestation(s) from %s" % (len(atts_from_remote), calendar_url))
-                            for att in get_attestations(upgraded_stamp):
+                            for att in atts_from_remote:
                                 logging.debug("    %r" % att)
 
-                        new_attestations = get_attestations(upgraded_stamp).difference(existing_attestations)
-                        if new_attestations:
-                            changed = True
-                            found_new_attestations = True
-                            existing_attestations.update(new_attestations)
+                        # new_attestations = atts_from_remote.difference(existing_attestations)  # FIXME if BitcoinAttestation is for the same block doesn't return anything
+                        # if new_attestations:
+                        # logging.debug("new attestations!")  # TODO remove
+                        changed = True
+                        # found_new_attestations = True
+                        # existing_attestations.update(new_attestations)
 
-                            # FIXME: need to think about DoS attacks here
-                            args.cache.merge(upgraded_stamp)
-                            sub_stamp.merge(upgraded_stamp)
+                        # FIXME: need to think about DoS attacks here
+                        args.cache.merge(upgraded_stamp)
+                        sub_stamp.merge(upgraded_stamp)
 
         if not args.wait:
             break
