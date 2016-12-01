@@ -504,8 +504,67 @@ def info_command(args):
     print("File %s hash: %s" % (detached_timestamp.file_hash_op.HASHLIB_NAME, hexlify(detached_timestamp.file_digest).decode('utf8')))
 
     print("Timestamp:")
-    print(detached_timestamp.timestamp.str_tree(debug=logging.getLogger().level))
 
+    proxy = args.setup_bitcoin()
+    op_rets = set()
+    txs = set()
+    def walk_stamp(stamp):
+        yield stamp
+        for sub_stamp in stamp.ops.values():
+            yield from walk_stamp(sub_stamp)
+    for sub_stamp in walk_stamp(detached_timestamp.timestamp):
+        if len(sub_stamp.msg) == 32:
+            try:
+                t = proxy.getrawtransaction(sub_stamp.msg)
+                txs.add(sub_stamp.msg)
+                for out in t.vout:
+                    two = out.scriptPubKey[0:2]
+                    if b2x(two) == '6a20':
+                        op_data = out.scriptPubKey[2:]
+                        op_rets.add(op_data)
+            except IndexError:
+                pass
+
+    print(str_tree_extended(detached_timestamp.timestamp, txs, op_rets))
+
+
+def str_tree_extended(timestamp, txs, op_rets, indent=0):
+    """Convert to tree (for debugging)"""
+
+    r = ""
+
+    if len(timestamp.attestations) > 0:
+        for attestation in sorted(timestamp.attestations):
+            x = " BLOCK MERKLE ROOT]" if attestation.__class__ == BitcoinBlockHeaderAttestation else ""
+            r += " " * indent + "verify %s" % str(attestation)
+            r += " (" + str(binascii.hexlify(timestamp.msg).decode()) + ")" + " [" + str(
+                binascii.hexlify(timestamp.msg[::-1]).decode()) + x
+            r += "\n"
+
+    if len(timestamp.ops) > 1:
+        for op, ts in sorted(timestamp.ops.items()):
+            r += " " * indent + " -> " + "%s" % str(op)
+            be = timestamp.msg[::-1]
+            r += " (" + str(binascii.hexlify(timestamp.msg).decode()) + ")" + " [" + str(
+                binascii.hexlify(be).decode()) + "]"
+            r += "\n"
+            r += str_tree_extended(ts, txs, op_rets, indent=indent + 4)
+    elif len(timestamp.ops) > 0:
+        x = ""
+        if timestamp.msg in op_rets:
+            x = " OP_RETURN"
+        y = ""
+        if timestamp.msg in txs:
+            y = " TRANSACTION"
+
+        r += " " * indent + "%s" % str(tuple(timestamp.ops.keys())[0])
+        r += " (" + str(binascii.hexlify(timestamp.msg).decode()) + x + ")" + " [" + str(
+            binascii.hexlify(timestamp.msg[::-1]).decode()) + y + "]"
+
+        r += "\n"
+        r += str_tree_extended(tuple(timestamp.ops.values())[0], txs, op_rets, indent=indent)
+
+    return r
 
 
 def git_extract_command(args):
