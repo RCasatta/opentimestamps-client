@@ -17,4 +17,3 @@ sha256
     prepend 583e9e45
     append 275f6e3bc96a90be
     verify PendingAttestation('https://alice.btc.calendar.opentimestamps.org')
-

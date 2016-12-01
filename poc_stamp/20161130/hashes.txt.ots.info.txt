@@ -165,4 +165,3 @@ sha256
     sha256
     sha256
     verify BitcoinBlockHeaderAttestation(441278)
-

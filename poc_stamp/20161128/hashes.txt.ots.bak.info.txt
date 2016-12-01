@@ -12,4 +12,3 @@ sha256
     prepend 583be6a5
     append c38960a6989d2463
     verify PendingAttestation('https://bob.btc.calendar.opentimestamps.org')
-
