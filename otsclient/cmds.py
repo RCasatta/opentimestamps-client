@@ -217,8 +217,10 @@ def is_timestamp_complete(stamp, args):
             counter[attestation.__class__] += 1
         except KeyError:
             counter[attestation.__class__] = 1
-
-    return counter[PendingAttestation] == counter[BitcoinBlockHeaderAttestation]
+    try:
+        return counter[PendingAttestation] == counter[BitcoinBlockHeaderAttestation]
+    except KeyError:
+        return False
 
 
 def upgrade_timestamp(timestamp, args):
