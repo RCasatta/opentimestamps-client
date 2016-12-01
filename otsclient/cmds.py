@@ -535,10 +535,10 @@ def str_tree_extended(timestamp, txs, op_rets, indent=0):
 
     if len(timestamp.attestations) > 0:
         for attestation in sorted(timestamp.attestations):
-            x = " BLOCK MERKLE ROOT]" if attestation.__class__ == BitcoinBlockHeaderAttestation else ""
+            x = " BLOCK MERKLE ROOT" if attestation.__class__ == BitcoinBlockHeaderAttestation else ""
             r += " " * indent + "verify %s" % str(attestation)
             r += " (" + str(binascii.hexlify(timestamp.msg).decode()) + ")" + " [" + str(
-                binascii.hexlify(timestamp.msg[::-1]).decode()) + x
+                binascii.hexlify(timestamp.msg[::-1]).decode()) + x + "]"
             r += "\n"
 
     if len(timestamp.ops) > 1:
