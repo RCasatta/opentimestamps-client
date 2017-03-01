@@ -500,9 +500,35 @@ def info_command(args):
     print("File %s hash: %s" % (detached_timestamp.file_hash_op.HASHLIB_NAME, hexlify(detached_timestamp.file_digest).decode('utf8')))
 
     print("Timestamp:")
-    print(detached_timestamp.timestamp.str_tree())
+    if args.verbosity > 0:
+        print(str_tree_extended(detached_timestamp.timestamp))
+    else:
+        print(detached_timestamp.timestamp.str_tree())
 
 
+def str_tree_extended(timestamp, indent=0):
+    """Convert to tree (for debugging)"""
+
+    r = ""
+    if len(timestamp.attestations) > 0:
+        for attestation in sorted(timestamp.attestations):
+            r += " " * indent + "verify %s" % str(attestation)
+            r += " (" + str(binascii.hexlify(timestamp.msg).decode()) + ")"
+            r += "\n"
+
+    if len(timestamp.ops) > 1:
+        for op, ts in sorted(timestamp.ops.items()):
+            r += " " * indent + " -> " + "%s" % str(op)
+            r += " (" + str(binascii.hexlify(timestamp.msg).decode()) + ")"
+            r += "\n"
+            r += str_tree_extended(ts,  indent=indent + 4)
+    elif len(timestamp.ops) > 0:
+        r += " " * indent + "%s" % str(tuple(timestamp.ops.keys())[0])
+        r += " (" + str(binascii.hexlify(timestamp.msg).decode()) + ")"
+        r += "\n"
+        r += str_tree_extended(tuple(timestamp.ops.values())[0], indent=indent)
+
+    return r
 
 def git_extract_command(args):
     import git
