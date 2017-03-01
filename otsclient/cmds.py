@@ -503,6 +503,22 @@ def info_command(args):
     print(detached_timestamp.timestamp.str_tree())
 
 
+def shrink_command(args):
+    ctx = StreamDeserializationContext(args.file)
+    try:
+        detached_timestamp = DetachedTimestampFile.deserialize(ctx)
+    except BadMagicError:
+        logging.error("Error! %r is not a timestamp file." % args.file.name)
+        sys.exit(1)
+    except DeserializationError as exp:
+        logging.error("Invalid timestamp file %r: %s" % (args.file.name, exp))
+        sys.exit(1)
+
+    for x in detached_timestamp.timestamp.all_attestations():
+        print(str(x))
+
+    fd = open(args.file.name + ".shrink", 'wb')
+
 
 def git_extract_command(args):
     import git

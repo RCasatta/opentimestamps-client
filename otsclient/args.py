@@ -211,12 +211,17 @@ def parse_ots_args(raw_args):
     parser_info.add_argument('file', metavar='FILE', type=argparse.FileType('rb'),
                              help='Filename')
 
-
+    # ----- shrink -----
+    parser_shrink = subparsers.add_parser('shrink', aliases=['k'],
+                                          help='Shrink a timestamp')
+    parser_shrink.add_argument('file', metavar='FILE', type=argparse.FileType('rb'),
+                               help='Filename')
 
     parser_stamp.set_defaults(cmd_func=otsclient.cmds.stamp_command)
     parser_upgrade.set_defaults(cmd_func=otsclient.cmds.upgrade_command)
     parser_verify.set_defaults(cmd_func=otsclient.cmds.verify_command)
     parser_info.set_defaults(cmd_func=otsclient.cmds.info_command)
+    parser_shrink.set_defaults(cmd_func=otsclient.cmds.shrink_command)
 
     try:
         import git
