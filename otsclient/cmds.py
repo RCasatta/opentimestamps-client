@@ -26,6 +26,7 @@ from bitcoin.core import b2x, b2lx, lx, CTxOut, CTransaction
 from bitcoin.core.script import CScript, OP_RETURN
 
 from binascii import hexlify
+from web3 import KeepAliveRPCProvider, Web3
 
 from opentimestamps.core.notary import *
 from opentimestamps.core.timestamp import *
@@ -391,7 +392,7 @@ def verify_timestamp(timestamp, args):
 
     def attestation_key(item):
         (msg, attestation) = item
-        if attestation.__class__ == BitcoinBlockHeaderAttestation:
+        if attestation.__class__ == BitcoinBlockHeaderAttestation or attestation.__class__ == EthereumBlockHeaderAttestation:
             return attestation.height
         else:
             return 2**32-1
@@ -435,6 +436,21 @@ def verify_timestamp(timestamp, args):
 
             # One Bitcoin attestation is enough
             break
+        elif attestation.__class__ == EthereumBlockHeaderAttestation:
+            web3 = Web3(KeepAliveRPCProvider(host="localhost", port=8545))
+
+            block = web3.eth.getBlock(attestation.height)
+
+            try:
+                attested_time = attestation.verify_against_blockheader(msg, block)
+            except VerificationError as err:
+                logging.error("Ethereum verification failed: %s" % str(err))
+                continue
+
+            logging.info("Success! Ethereum attests data existed as of %s" %
+                         time.strftime('%c %Z', time.localtime(attested_time)))
+            good = True
+
 
     return good
 
