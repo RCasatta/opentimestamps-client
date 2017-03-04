@@ -426,6 +426,7 @@ def verify_timestamp(timestamp, args):
 
             try:
                 attested_time = attestation.verify_against_blockheader(msg, block_header)
+                logger.debug("Attestation unix timestamp: " + attested_time)
             except VerificationError as err:
                 logging.error("Bitcoin verification failed: %s" % str(err))
                 continue
@@ -443,6 +444,7 @@ def verify_timestamp(timestamp, args):
 
             try:
                 attested_time = attestation.verify_against_blockheader(msg, block)
+
             except VerificationError as err:
                 logging.error("Ethereum verification failed: %s" % str(err))
                 continue
