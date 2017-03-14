@@ -436,7 +436,7 @@ def verify_timestamp(timestamp, args):
             good = True
 
             # One Bitcoin attestation is enough
-            break
+            # break
         elif attestation.__class__ == EthereumBlockHeaderAttestation:
             web3 = Web3(KeepAliveRPCProvider(host="localhost", port=8545))
 
