@@ -136,6 +136,7 @@ def submit_async(calendar_url, msg, q, timeout):
 
     def submit_async_thread(remote, msg, q, timeout):
         try:
+            logging.debug("Sending to calendar digest: " + str(binascii.hexlify(msg).decode()))
             calendar_timestamp = remote.submit(msg, timeout=timeout)
             q.put(calendar_timestamp)
         except Exception as exc:
