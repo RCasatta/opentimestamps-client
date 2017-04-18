@@ -12,8 +12,10 @@
 import binascii
 import hashlib
 
+from bitcoin.core import CTransaction, SerializationTruncationError
+
 from opentimestamps.core.op import Op, UnaryOp, CryptOp, OpSHA256, OpAppend, OpPrepend, MsgValueError
-from opentimestamps.core.notary import TimeAttestation
+from opentimestamps.core.notary import TimeAttestation, BitcoinBlockHeaderAttestation
 
 import opentimestamps.core.serialize
 
@@ -192,21 +194,34 @@ class Timestamp:
         for op_stamp in self.ops.values():
             yield from op_stamp.all_attestations()
 
-    def str_tree(self, indent=0):
+    def str_tree(self, indent=0, verbosity=0):
         """Convert to tree (for debugging)"""
 
         r = ""
         if len(self.attestations) > 0:
             for attestation in sorted(self.attestations):
-                r += " "*indent + "verify %s" % str(attestation) + "\n"
+                r += " "*indent + "verify %s" % str(attestation) + (" == " + bytes.hex(self.msg) if verbosity > 0 else "") + "\n"
+                if attestation.__class__ == BitcoinBlockHeaderAttestation:
+                    r += " "*indent + "* Bitcoin block merkle root " + bytes.hex(self.msg[::-1]) + "\n"
 
         if len(self.ops) > 1:
             for op, timestamp in sorted(self.ops.items()):
-                r += " "*indent + " -> " + "%s"%str(op) + "\n"
-                r += timestamp.str_tree(indent+4)
+                try:
+                    CTransaction.deserialize(self.msg)
+                    r += " " * indent + "* Bitcoin transaction id " + bytes.hex(
+                        OpSHA256()(OpSHA256()(self.msg))[::-1]) + "\n"
+                except SerializationTruncationError:
+                    pass
+                r += " " * indent + " -> " + "%s" % str(op) + (" == " + bytes.hex(self.msg) if verbosity > 0 else "") + "\n"
+                r += timestamp.str_tree(indent+4, verbosity=verbosity)
         elif len(self.ops) > 0:
-            r += " "*indent + "%s\n" % str(tuple(self.ops.keys())[0])
-            r += tuple(self.ops.values())[0].str_tree(indent)
+            try:
+                CTransaction.deserialize(self.msg)
+                r += " " * indent + "* Bitcoin transaction id " + bytes.hex(OpSHA256()(OpSHA256()(self.msg))[::-1]) + "\n"
+            except SerializationTruncationError:
+                pass
+            r += " " * indent + "%s" % str(tuple(self.ops.keys())[0]) + (" == " + bytes.hex(self.msg) if verbosity > 0 else "") + "\n"
+            r += tuple(self.ops.values())[0].str_tree(indent, verbosity=verbosity)
 
         return r
 
